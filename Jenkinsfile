@@ -36,10 +36,10 @@ pipeline {
                         echo     } >> "%USERPROFILE%\\.docker\\config.json"
                         echo } >> "%USERPROFILE%\\.docker\\config.json"
                         
-                        :: Set Docker context
-                        docker context use desktop-linux
+                        :: Set Docker context to default
+                        docker context use default
                         
-                        :: Test Docker
+                        :: Verify Docker is working
                         docker info
                     '''
                 }
