@@ -17,6 +17,7 @@ pipeline {
         FLASK_VERSION = '2.0.1'
         WERKZEUG_VERSION = '2.0.1'
         DOCKER_REGISTRY = 'https://index.docker.io/v1/'
+        DOCKER_PATH = 'C:\\Program Files\\Docker\\Docker\\resources\\bin'
     }
     
     stages {
@@ -27,25 +28,34 @@ pipeline {
                     bat '''
                         @echo off
                         echo Checking system requirements...
+                        
+                        :: Add Docker to PATH
+                        set PATH=%PATH%;%DOCKER_PATH%
+                        
+                        :: Verify Docker installation
                         where docker >nul 2>&1
                         if %ERRORLEVEL% neq 0 (
                             echo ERROR: Docker not found in PATH
+                            echo Please ensure Docker Desktop is installed and running
                             exit /b 1
                         )
                         
-                        echo Checking Docker daemon...
-                        docker info >nul 2>&1
+                        :: Verify Docker daemon
+                        "%DOCKER_PATH%\\docker.exe" info >nul 2>&1
                         if %ERRORLEVEL% neq 0 (
                             echo ERROR: Docker daemon not running
+                            echo Please start Docker Desktop
                             exit /b 1
                         )
                         
-                        echo Checking available disk space...
+                        :: Check disk space
                         for /f "tokens=3" %%a in ('dir /s /a /-c C:\\ 2^>nul ^| find "bytes free"') do set FREE=%%a
                         if %FREE% LSS 1073741824 (
                             echo ERROR: Less than 1GB free disk space
                             exit /b 1
                         )
+                        
+                        echo All pre-checks passed successfully
                     '''
                 }
             }
@@ -76,6 +86,9 @@ pipeline {
                         @echo off
                         setlocal EnableDelayedExpansion
                         
+                        :: Add Docker to PATH
+                        set PATH=%PATH%;%DOCKER_PATH%
+                        
                         :: Create secure Docker config
                         echo Creating Docker configuration...
                         mkdir "%USERPROFILE%\\.docker" 2>nul
@@ -91,16 +104,16 @@ pipeline {
                         echo } >> "%USERPROFILE%\\.docker\\config.json"
                         
                         :: Set Docker context
-                        docker context use desktop-linux
+                        "%DOCKER_PATH%\\docker.exe" context use desktop-linux
                         
                         :: Clean up Docker resources
                         echo Cleaning up Docker resources...
-                        docker system prune -f --volumes --all
-                        docker builder prune -f --all
+                        "%DOCKER_PATH%\\docker.exe" system prune -f --volumes --all
+                        "%DOCKER_PATH%\\docker.exe" builder prune -f --all
                         
                         :: Verify Docker setup
                         echo Verifying Docker setup...
-                        docker info
+                        "%DOCKER_PATH%\\docker.exe" info
                         if %ERRORLEVEL% neq 0 (
                             echo ERROR: Docker setup verification failed
                             exit /b 1
@@ -118,9 +131,12 @@ pipeline {
                         @echo off
                         setlocal EnableDelayedExpansion
                         
+                        :: Add Docker to PATH
+                        set PATH=%PATH%;%DOCKER_PATH%
+                        
                         :: Build with security scanning
                         echo Building Docker image with security scanning...
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" build ^
+                        "%DOCKER_PATH%\\docker.exe" build ^
                             --no-cache ^
                             --build-arg PYTHON_VERSION=%PYTHON_VERSION% ^
                             --build-arg FLASK_VERSION=%FLASK_VERSION% ^
@@ -133,7 +149,7 @@ pipeline {
                         
                         :: Verify image
                         echo Verifying built image...
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" inspect %DOCKER_IMAGE%:%DOCKER_TAG%
+                        "%DOCKER_PATH%\\docker.exe" inspect %DOCKER_IMAGE%:%DOCKER_TAG%
                         if %ERRORLEVEL% neq 0 (
                             echo ERROR: Image verification failed
                             exit /b 1
@@ -149,8 +165,13 @@ pipeline {
                     echo "=== Dependency Verification Stage ==="
                     bat '''
                         @echo off
+                        setlocal EnableDelayedExpansion
+                        
+                        :: Add Docker to PATH
+                        set PATH=%PATH%;%DOCKER_PATH%
+                        
                         echo Verifying Python and package versions...
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" run --rm %DOCKER_IMAGE%:%DOCKER_TAG% python -c ^
+                        "%DOCKER_PATH%\\docker.exe" run --rm %DOCKER_IMAGE%:%DOCKER_TAG% python -c ^
                             "import sys; print(f'Python version: {sys.version}'); ^
                             import flask; print(f'Flask version: {flask.__version__}'); ^
                             import werkzeug; print(f'Werkzeug version: {werkzeug.__version__}'); ^
@@ -167,8 +188,13 @@ pipeline {
                     echo "=== Security Scanning Stage ==="
                     bat '''
                         @echo off
+                        setlocal EnableDelayedExpansion
+                        
+                        :: Add Docker to PATH
+                        set PATH=%PATH%;%DOCKER_PATH%
+                        
                         echo Running security scan...
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" scan %DOCKER_IMAGE%:%DOCKER_TAG%
+                        "%DOCKER_PATH%\\docker.exe" scan %DOCKER_IMAGE%:%DOCKER_TAG%
                     '''
                 }
             }
@@ -180,8 +206,13 @@ pipeline {
                     echo "=== Application Run Stage ==="
                     bat '''
                         @echo off
+                        setlocal EnableDelayedExpansion
+                        
+                        :: Add Docker to PATH
+                        set PATH=%PATH%;%DOCKER_PATH%
+                        
                         echo Starting application...
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" run ^
+                        "%DOCKER_PATH%\\docker.exe" run ^
                             --rm ^
                             -p 8000:8000 ^
                             --name ai-property-verifier-%BUILD_NUMBER% ^
@@ -203,10 +234,15 @@ pipeline {
                     echo "=== Push Stage ==="
                     bat '''
                         @echo off
+                        setlocal EnableDelayedExpansion
+                        
+                        :: Add Docker to PATH
+                        set PATH=%PATH%;%DOCKER_PATH%
+                        
                         echo Tagging and pushing images...
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" tag %DOCKER_IMAGE%:%DOCKER_TAG% %DOCKER_IMAGE%:latest
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:%DOCKER_TAG%
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:latest
+                        "%DOCKER_PATH%\\docker.exe" tag %DOCKER_IMAGE%:%DOCKER_TAG% %DOCKER_IMAGE%:latest
+                        "%DOCKER_PATH%\\docker.exe" push %DOCKER_IMAGE%:%DOCKER_TAG%
+                        "%DOCKER_PATH%\\docker.exe" push %DOCKER_IMAGE%:latest
                     '''
                 }
             }
@@ -218,6 +254,11 @@ pipeline {
                     echo "=== Deployment Stage ==="
                     bat '''
                         @echo off
+                        setlocal EnableDelayedExpansion
+                        
+                        :: Add Docker to PATH
+                        set PATH=%PATH%;%DOCKER_PATH%
+                        
                         echo Deploying to Kubernetes...
                         kubectl apply -f k8s/deployment.yaml
                         kubectl apply -f k8s/service.yaml
@@ -237,9 +278,14 @@ pipeline {
                     echo "=== Cleanup Stage ==="
                     bat '''
                         @echo off
+                        setlocal EnableDelayedExpansion
+                        
+                        :: Add Docker to PATH
+                        set PATH=%PATH%;%DOCKER_PATH%
+                        
                         echo Cleaning up resources...
-                        docker system prune -f --volumes --all
-                        docker builder prune -f --all
+                        "%DOCKER_PATH%\\docker.exe" system prune -f --volumes --all
+                        "%DOCKER_PATH%\\docker.exe" builder prune -f --all
                     '''
                     cleanWs()
                 }
@@ -267,10 +313,15 @@ pipeline {
                     echo "=== Failure Analysis ==="
                     bat '''
                         @echo off
+                        setlocal EnableDelayedExpansion
+                        
+                        :: Add Docker to PATH
+                        set PATH=%PATH%;%DOCKER_PATH%
+                        
                         echo Collecting debug information...
-                        docker images
-                        docker ps -a
-                        docker logs ai-property-verifier-%BUILD_NUMBER% 2>&1
+                        "%DOCKER_PATH%\\docker.exe" images
+                        "%DOCKER_PATH%\\docker.exe" ps -a
+                        "%DOCKER_PATH%\\docker.exe" logs ai-property-verifier-%BUILD_NUMBER% 2>&1
                     '''
                     emailext (
                         subject: "FAILED: Pipeline '${env.JOB_NAME}' [${env.BUILD_NUMBER}]",
