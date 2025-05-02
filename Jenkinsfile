@@ -20,11 +20,22 @@ pipeline {
                     bat '''
                         @echo off
                         echo === Setting up Docker Environment ===
+                        echo Start Time: %TIME%
                         
                         :: Add Docker to PATH
                         set PATH=%PATH%;C:\\Program Files\\Docker\\Docker\\resources\\bin
                         
+                        :: Check if Docker is running
+                        echo Checking Docker status...
+                        docker info > nul 2>&1
+                        if errorlevel 1 (
+                            echo Docker is not running. Starting Docker Desktop...
+                            start "" "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe"
+                            timeout /t 30 /nobreak
+                        )
+                        
                         :: Create Docker config directory
+                        echo Creating Docker config...
                         mkdir "%USERPROFILE%\\.docker" 2>nul
                         
                         :: Create Docker config file
@@ -37,10 +48,13 @@ pipeline {
                         echo } >> "%USERPROFILE%\\.docker\\config.json"
                         
                         :: Set Docker context to default
+                        echo Setting Docker context...
                         docker context use default
                         
                         :: Verify Docker is working
+                        echo Verifying Docker setup...
                         docker info
+                        echo End Time: %TIME%
                     '''
                 }
             }
@@ -53,7 +67,9 @@ pipeline {
                     bat '''
                         @echo off
                         echo === Building Docker Image ===
+                        echo Start Time: %TIME%
                         "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" build --no-cache -t %DOCKER_IMAGE%:%DOCKER_TAG% .
+                        echo End Time: %TIME%
                     '''
                 }
             }
@@ -66,7 +82,9 @@ pipeline {
                     bat '''
                         @echo off
                         echo === Running Tests ===
+                        echo Start Time: %TIME%
                         "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" run --rm %DOCKER_IMAGE%:%DOCKER_TAG% python -m pytest test_app.py -v
+                        echo End Time: %TIME%
                     '''
                 }
             }
@@ -79,9 +97,11 @@ pipeline {
                     bat '''
                         @echo off
                         echo === Pushing Docker Image ===
+                        echo Start Time: %TIME%
                         "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" tag %DOCKER_IMAGE%:%DOCKER_TAG% %DOCKER_IMAGE%:latest
                         "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:%DOCKER_TAG%
                         "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:latest
+                        echo End Time: %TIME%
                     '''
                 }
             }
@@ -94,8 +114,10 @@ pipeline {
                     bat '''
                         @echo off
                         echo === Deploying to Kubernetes ===
+                        echo Start Time: %TIME%
                         kubectl apply -f k8s/deployment.yaml
                         kubectl apply -f k8s/service.yaml
+                        echo End Time: %TIME%
                     '''
                 }
             }
