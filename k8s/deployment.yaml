@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-property-verifier
+  labels:
+    app: ai-property-verifier
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ai-property-verifier
+  template:
+    metadata:
+      labels:
+        app: ai-property-verifier
+    spec:
+      containers:
+      - name: ai-property-verifier
+        image: sameermujahid/ai-property-verifier:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+        env:
+        - name: FLASK_ENV
+          value: "production"
+        - name: LOG_DIR
+          value: "/app/logs"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+      volumes:
+      - name: logs
+        emptyDir: {} 
