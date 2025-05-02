@@ -1,21 +1,11 @@
 FROM python:3.9-slim
 
-# Add build arguments for credentials
-ARG DOCKER_USERNAME
-ARG DOCKER_PASSWORD
-
-# Set build arguments
-ARG FLASK_VERSION=2.0.1
-ARG WERKZEUG_VERSION=2.0.1
-
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     FLASK_APP=app.py \
     FLASK_ENV=production \
-    LOG_DIR=/app/logs \
-    DOCKER_USERNAME=${DOCKER_USERNAME} \
-    DOCKER_PASSWORD=${DOCKER_PASSWORD}
+    LOG_DIR=/app/logs
 
 # Set working directory
 WORKDIR /app
@@ -31,8 +21,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir flask==${FLASK_VERSION} werkzeug==${WERKZEUG_VERSION}
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
