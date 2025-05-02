@@ -17,7 +17,6 @@ pipeline {
         FLASK_VERSION = '2.0.1'
         WERKZEUG_VERSION = '2.0.1'
         DOCKER_REGISTRY = 'https://index.docker.io/v1/'
-        DOCKER_CREDENTIALS = credentials('docker-hub-credentials')
     }
     
     stages {
@@ -85,7 +84,7 @@ pipeline {
                         echo { > "%USERPROFILE%\\.docker\\config.json"
                         echo     "auths": { >> "%USERPROFILE%\\.docker\\config.json"
                         echo         "%DOCKER_REGISTRY%": { >> "%USERPROFILE%\\.docker\\config.json"
-                        echo             "auth": "%DOCKER_CREDENTIALS%" >> "%USERPROFILE%\\.docker\\config.json"
+                        echo             "auth": "c2FtZWVybXVqYWhpZDpTYW1lZXJANzc3Nw==" >> "%USERPROFILE%\\.docker\\config.json"
                         echo         } >> "%USERPROFILE%\\.docker\\config.json"
                         echo     }, >> "%USERPROFILE%\\.docker\\config.json"
                         echo     "credsStore": "wincred" >> "%USERPROFILE%\\.docker\\config.json"
@@ -233,51 +232,57 @@ pipeline {
     
     post {
         always {
-            script {
-                echo "=== Cleanup Stage ==="
-                bat '''
-                    @echo off
-                    echo Cleaning up resources...
-                    docker system prune -f --volumes --all
-                    docker builder prune -f --all
+            node('windows') {
+                script {
+                    echo "=== Cleanup Stage ==="
+                    bat '''
+                        @echo off
+                        echo Cleaning up resources...
+                        docker system prune -f --volumes --all
+                        docker builder prune -f --all
+                    '''
                     cleanWs()
-                '''
+                }
             }
         }
         success {
-            script {
-                echo "=== Success Notification ==="
-                emailext (
-                    subject: "SUCCESS: Pipeline '${env.JOB_NAME}' [${env.BUILD_NUMBER}]",
-                    body: """Pipeline completed successfully!
-                    Job: ${env.JOB_NAME}
-                    Build Number: ${env.BUILD_NUMBER}
-                    Build URL: ${env.BUILD_URL}
-                    """,
-                    recipientProviders: [[$class: 'DevelopersRecipientProvider']]
-                )
+            node('windows') {
+                script {
+                    echo "=== Success Notification ==="
+                    emailext (
+                        subject: "SUCCESS: Pipeline '${env.JOB_NAME}' [${env.BUILD_NUMBER}]",
+                        body: """Pipeline completed successfully!
+                        Job: ${env.JOB_NAME}
+                        Build Number: ${env.BUILD_NUMBER}
+                        Build URL: ${env.BUILD_URL}
+                        """,
+                        recipientProviders: [[$class: 'DevelopersRecipientProvider']]
+                    )
+                }
             }
         }
         failure {
-            script {
-                echo "=== Failure Analysis ==="
-                bat '''
-                    @echo off
-                    echo Collecting debug information...
-                    docker images
-                    docker ps -a
-                    docker logs ai-property-verifier-%BUILD_NUMBER% 2>&1
-                '''
-                emailext (
-                    subject: "FAILED: Pipeline '${env.JOB_NAME}' [${env.BUILD_NUMBER}]",
-                    body: """Pipeline failed!
-                    Job: ${env.JOB_NAME}
-                    Build Number: ${env.BUILD_NUMBER}
-                    Build URL: ${env.BUILD_URL}
-                    Stage: ${currentBuild.currentResult}
-                    """,
-                    recipientProviders: [[$class: 'DevelopersRecipientProvider']]
-                )
+            node('windows') {
+                script {
+                    echo "=== Failure Analysis ==="
+                    bat '''
+                        @echo off
+                        echo Collecting debug information...
+                        docker images
+                        docker ps -a
+                        docker logs ai-property-verifier-%BUILD_NUMBER% 2>&1
+                    '''
+                    emailext (
+                        subject: "FAILED: Pipeline '${env.JOB_NAME}' [${env.BUILD_NUMBER}]",
+                        body: """Pipeline failed!
+                        Job: ${env.JOB_NAME}
+                        Build Number: ${env.BUILD_NUMBER}
+                        Build URL: ${env.BUILD_URL}
+                        Stage: ${currentBuild.currentResult}
+                        """,
+                        recipientProviders: [[$class: 'DevelopersRecipientProvider']]
+                    )
+                }
             }
         }
         unstable {
