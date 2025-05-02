@@ -13,12 +13,6 @@ pipeline {
             }
         }
         
-        stage('Clean Workspace') {
-            steps {
-                cleanWs()
-            }
-        }
-        
         stage('Setup Docker') {
             steps {
                 script {
@@ -125,11 +119,10 @@ pipeline {
     
     post {
         always {
-            cleanWs()
             bat '''
                 @echo off
                 echo === Cleaning up Docker resources ===
-                docker system prune -f
+                "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" system prune -f
             '''
         }
         success {
