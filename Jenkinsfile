@@ -53,7 +53,7 @@ pipeline {
                     bat '''
                         @echo off
                         echo === Building Docker Image ===
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" build --no-cache --build-arg DOCKER_USERNAME=sameermujahid --build-arg DOCKER_PASSWORD=Sameer@7777 -t %DOCKER_IMAGE%:%DOCKER_TAG% .
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" build --no-cache -t %DOCKER_IMAGE%:%DOCKER_TAG% .
                     '''
                 }
             }
@@ -66,7 +66,7 @@ pipeline {
                     bat '''
                         @echo off
                         echo === Running Tests ===
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" run --rm %DOCKER_IMAGE%:%DOCKER_TAG% python -m pytest test_app.py
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" run --rm %DOCKER_IMAGE%:%DOCKER_TAG% python -m pytest app.py
                     '''
                 }
             }
