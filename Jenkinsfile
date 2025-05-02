@@ -13,6 +13,12 @@ pipeline {
             }
         }
         
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+        
         stage('Setup Docker') {
             steps {
                 script {
@@ -34,18 +40,9 @@ pipeline {
                             timeout /t 30 /nobreak
                         )
                         
-                        :: Create Docker config directory
-                        echo Creating Docker config...
-                        mkdir "%USERPROFILE%\\.docker" 2>nul
-                        
-                        :: Create Docker config file
-                        echo { > "%USERPROFILE%\\.docker\\config.json"
-                        echo     "auths": { >> "%USERPROFILE%\\.docker\\config.json"
-                        echo         "https://index.docker.io/v1/": { >> "%USERPROFILE%\\.docker\\config.json"
-                        echo             "auth": "c2FtZWVybXVqYWhpZDpTYW1lZXJANzc3Nw==" >> "%USERPROFILE%\\.docker\\config.json"
-                        echo         } >> "%USERPROFILE%\\.docker\\config.json"
-                        echo     } >> "%USERPROFILE%\\.docker\\config.json"
-                        echo } >> "%USERPROFILE%\\.docker\\config.json"
+                        :: Clean up Docker resources
+                        echo Cleaning up Docker resources...
+                        docker system prune -f
                         
                         :: Set Docker context to default
                         echo Setting Docker context...
@@ -68,7 +65,7 @@ pipeline {
                         @echo off
                         echo === Building Docker Image ===
                         echo Start Time: %TIME%
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" build --no-cache -t %DOCKER_IMAGE%:%DOCKER_TAG% .
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" build --no-cache --rm -t %DOCKER_IMAGE%:%DOCKER_TAG% .
                         echo End Time: %TIME%
                     '''
                 }
@@ -93,16 +90,18 @@ pipeline {
         stage('Push') {
             steps {
                 script {
-                    echo "Pushing Docker image..."
-                    bat '''
-                        @echo off
-                        echo === Pushing Docker Image ===
-                        echo Start Time: %TIME%
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" tag %DOCKER_IMAGE%:%DOCKER_TAG% %DOCKER_IMAGE%:latest
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:%DOCKER_TAG%
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:latest
-                        echo End Time: %TIME%
-                    '''
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        bat '''
+                            @echo off
+                            echo === Pushing Docker Image ===
+                            echo Start Time: %TIME%
+                            "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" login -u %DOCKER_USERNAME% -p %DOCKER_PASSWORD%
+                            "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" tag %DOCKER_IMAGE%:%DOCKER_TAG% %DOCKER_IMAGE%:latest
+                            "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:%DOCKER_TAG%
+                            "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:latest
+                            echo End Time: %TIME%
+                        '''
+                    }
                 }
             }
         }
@@ -127,6 +126,11 @@ pipeline {
     post {
         always {
             cleanWs()
+            bat '''
+                @echo off
+                echo === Cleaning up Docker resources ===
+                docker system prune -f
+            '''
         }
         success {
             echo 'Pipeline completed successfully!'
