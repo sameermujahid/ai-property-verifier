@@ -37,7 +37,13 @@ pipeline {
                         echo } >> "%USERPROFILE%\\.docker\\config.json"
                         
                         :: Set Docker context
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" context use desktop-linux
+                        docker context use desktop-linux
+                        
+                        :: Clean up Docker
+                        docker system prune -f
+                        
+                        :: Test Docker
+                        docker info
                     '''
                 }
             }
@@ -101,6 +107,16 @@ pipeline {
     }
     
     post {
+        always {
+            cleanWs()
+            script {
+                bat '''
+                    @echo off
+                    echo === Cleaning up Docker ===
+                    docker system prune -f
+                '''
+            }
+        }
         success {
             echo 'Pipeline completed successfully!'
         }
@@ -108,4 +124,4 @@ pipeline {
             echo 'Pipeline failed!'
         }
     }
-} 
+}
