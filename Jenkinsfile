@@ -18,25 +18,28 @@ pipeline {
                 script {
                     echo "Setting up Docker environment..."
                     bat '''
+                        @echo off
                         echo === Setting up Docker Environment ===
+                        
+                        :: Add Docker to PATH
                         set PATH=%PATH%;C:\\Program Files\\Docker\\Docker\\resources\\bin
                         
-                        # Create Docker config directory
+                        :: Create Docker config directory
                         mkdir "%USERPROFILE%\\.docker" 2>nul
                         
-                        # Create Docker config file
-                        echo {
-                        echo     "auths": {
-                        echo         "https://index.docker.io/v1/": {
-                        echo             "auth": "c2FtZWVybXVqYWhpZDpTYW1lZXJANzc3Nw=="
-                        echo         }
-                        echo     }
-                        echo } > "%USERPROFILE%\\.docker\\config.json"
+                        :: Create Docker config file
+                        echo { > "%USERPROFILE%\\.docker\\config.json"
+                        echo     "auths": { >> "%USERPROFILE%\\.docker\\config.json"
+                        echo         "https://index.docker.io/v1/": { >> "%USERPROFILE%\\.docker\\config.json"
+                        echo             "auth": "c2FtZWVybXVqYWhpZDpTYW1lZXJANzc3Nw==" >> "%USERPROFILE%\\.docker\\config.json"
+                        echo         } >> "%USERPROFILE%\\.docker\\config.json"
+                        echo     } >> "%USERPROFILE%\\.docker\\config.json"
+                        echo } >> "%USERPROFILE%\\.docker\\config.json"
                         
-                        # Set Docker context
+                        :: Set Docker context
                         docker context use desktop-linux
                         
-                        # Test Docker
+                        :: Test Docker
                         docker info
                     '''
                 }
@@ -48,8 +51,9 @@ pipeline {
                 script {
                     echo "Building Docker image..."
                     bat '''
+                        @echo off
                         echo === Building Docker Image ===
-                        docker build --no-cache --build-arg DOCKER_USERNAME=sameermujahid --build-arg DOCKER_PASSWORD=Sameer@7777 -t %DOCKER_IMAGE%:%DOCKER_TAG% .
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" build --no-cache --build-arg DOCKER_USERNAME=sameermujahid --build-arg DOCKER_PASSWORD=Sameer@7777 -t %DOCKER_IMAGE%:%DOCKER_TAG% .
                     '''
                 }
             }
@@ -60,8 +64,9 @@ pipeline {
                 script {
                     echo "Running tests..."
                     bat '''
+                        @echo off
                         echo === Running Tests ===
-                        docker run --rm %DOCKER_IMAGE%:%DOCKER_TAG% python -m pytest test_app.py
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" run --rm %DOCKER_IMAGE%:%DOCKER_TAG% python -m pytest test_app.py
                     '''
                 }
             }
@@ -72,10 +77,11 @@ pipeline {
                 script {
                     echo "Pushing Docker image..."
                     bat '''
+                        @echo off
                         echo === Pushing Docker Image ===
-                        docker tag %DOCKER_IMAGE%:%DOCKER_TAG% %DOCKER_IMAGE%:latest
-                        docker push %DOCKER_IMAGE%:%DOCKER_TAG%
-                        docker push %DOCKER_IMAGE%:latest
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" tag %DOCKER_IMAGE%:%DOCKER_TAG% %DOCKER_IMAGE%:latest
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:%DOCKER_TAG%
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:latest
                     '''
                 }
             }
@@ -86,6 +92,7 @@ pipeline {
                 script {
                     echo "Deploying to Kubernetes..."
                     bat '''
+                        @echo off
                         echo === Deploying to Kubernetes ===
                         kubectl apply -f k8s/deployment.yaml
                         kubectl apply -f k8s/service.yaml
