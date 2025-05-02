@@ -7,6 +7,26 @@ pipeline {
     }
     
     stages {
+        stage('Cleanup') {
+            steps {
+                script {
+                    echo "Cleaning up before build..."
+                    bat '''
+                        @echo off
+                        echo === Cleaning up system ===
+                        
+                        :: Clean Docker
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" system prune -a --volumes --force
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" builder prune -a --force
+                        
+                        :: Clean workspace
+                        rmdir /s /q "%WORKSPACE%" 2>nul
+                        mkdir "%WORKSPACE%"
+                    '''
+                }
+            }
+        }
+        
         stage('Checkout') {
             steps {
                 checkout scm
@@ -37,13 +57,10 @@ pipeline {
                         echo } >> "%USERPROFILE%\\.docker\\config.json"
                         
                         :: Set Docker context
-                        docker context use desktop-linux
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" context use desktop-linux
                         
                         :: Clean up Docker
-                        docker system prune -f
-                        
-                        :: Test Docker
-                        docker info
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" system prune -f
                     '''
                 }
             }
@@ -108,12 +125,17 @@ pipeline {
     
     post {
         always {
-            cleanWs()
             script {
                 bat '''
                     @echo off
-                    echo === Cleaning up Docker ===
-                    docker system prune -f
+                    echo === Final Cleanup ===
+                    
+                    :: Clean Docker
+                    "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" system prune -a --volumes --force
+                    "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" builder prune -a --force
+                    
+                    :: Clean workspace
+                    rmdir /s /q "%WORKSPACE%" 2>nul
                 '''
             }
         }
