@@ -1,118 +1,46 @@
 pipeline {
-    agent {
-        label 'windows'
-    }
-    
-    options {
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        timeout(time: 30, unit: 'MINUTES')
-        retry(3)
-        disableConcurrentBuilds()
-    }
+    agent any
     
     environment {
         DOCKER_IMAGE = 'sameermujahid/ai-property-verifier'
         DOCKER_TAG = "${BUILD_NUMBER}"
-        PYTHON_VERSION = '3.9.22'
-        FLASK_VERSION = '2.0.1'
-        WERKZEUG_VERSION = '2.0.1'
-        DOCKER_REGISTRY = 'https://index.docker.io/v1/'
-        DOCKER_PATH = 'C:\\Program Files\\Docker\\Docker\\resources\\bin'
     }
     
     stages {
-        stage('Pre-Check') {
-            steps {
-                script {
-                    echo "=== Pre-Check Stage ==="
-                    bat '''
-                        @echo off
-                        echo Checking system requirements...
-                        
-                        :: Add Docker to PATH
-                        set PATH=%PATH%;%DOCKER_PATH%
-                        
-                        :: Verify Docker installation
-                        where docker >nul 2>&1
-                        if %ERRORLEVEL% neq 0 (
-                            echo ERROR: Docker not found in PATH
-                            echo Please ensure Docker Desktop is installed and running
-                            exit /b 1
-                        )
-                        
-                        :: Verify Docker daemon
-                        "%DOCKER_PATH%\\docker.exe" info >nul 2>&1
-                        if %ERRORLEVEL% neq 0 (
-                            echo ERROR: Docker daemon not running
-                            echo Please start Docker Desktop
-                            exit /b 1
-                        )
-                        
-                        :: Check disk space
-                        for /f "tokens=3" %%a in ('dir /s /a /-c C:\\ 2^>nul ^| find "bytes free"') do set FREE=%%a
-                        if %FREE% LSS 1073741824 (
-                            echo ERROR: Less than 1GB free disk space
-                            exit /b 1
-                        )
-                        
-                        echo All pre-checks passed successfully
-                    '''
-                }
-            }
-        }
-        
         stage('Checkout') {
             steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/sameermujahid/ai-property-verifier.git',
-                        credentialsId: 'github-credentials'
-                    ]],
-                    extensions: [
-                        [$class: 'CleanBeforeCheckout'],
-                        [$class: 'CloneOption', depth: 1, noTags: false, reference: '', shallow: true]
-                    ]
-                ])
+                checkout scm
             }
         }
         
         stage('Setup Docker') {
             steps {
                 script {
-                    echo "=== Docker Setup Stage ==="
+                    echo "Setting up Docker environment..."
                     bat '''
                         @echo off
-                        setlocal EnableDelayedExpansion
+                        echo === Setting up Docker Environment ===
                         
                         :: Add Docker to PATH
-                        set PATH=%PATH%;%DOCKER_PATH%
+                        set PATH=%PATH%;C:\\Program Files\\Docker\\Docker\\resources\\bin
                         
-                        :: Create secure Docker config
-                        echo Creating Docker configuration...
+                        :: Create Docker config directory
                         mkdir "%USERPROFILE%\\.docker" 2>nul
                         
-                        :: Generate secure Docker config with credentials
+                        :: Create Docker config file
                         echo { > "%USERPROFILE%\\.docker\\config.json"
                         echo     "auths": { >> "%USERPROFILE%\\.docker\\config.json"
-                        echo         "%DOCKER_REGISTRY%": { >> "%USERPROFILE%\\.docker\\config.json"
+                        echo         "https://index.docker.io/v1/": { >> "%USERPROFILE%\\.docker\\config.json"
                         echo             "auth": "c2FtZWVybXVqYWhpZDpTYW1lZXJANzc3Nw==" >> "%USERPROFILE%\\.docker\\config.json"
                         echo         } >> "%USERPROFILE%\\.docker\\config.json"
-                        echo     }, >> "%USERPROFILE%\\.docker\\config.json"
-                        echo     "credsStore": "wincred" >> "%USERPROFILE%\\.docker\\config.json"
+                        echo     } >> "%USERPROFILE%\\.docker\\config.json"
                         echo } >> "%USERPROFILE%\\.docker\\config.json"
                         
                         :: Set Docker context
-                        "%DOCKER_PATH%\\docker.exe" context use desktop-linux
+                        docker context use desktop-linux
                         
-                        :: Verify Docker setup
-                        echo Verifying Docker setup...
-                        "%DOCKER_PATH%\\docker.exe" info
-                        if %ERRORLEVEL% neq 0 (
-                            echo ERROR: Docker setup verification failed
-                            exit /b 1
-                        )
+                        :: Test Docker
+                        docker info
                     '''
                 }
             }
@@ -121,62 +49,24 @@ pipeline {
         stage('Build') {
             steps {
                 script {
-                    echo "=== Build Stage ==="
+                    echo "Building Docker image..."
                     bat '''
                         @echo off
-                        setlocal EnableDelayedExpansion
-                        
-                        :: Add Docker to PATH
-                        set PATH=%PATH%;%DOCKER_PATH%
-                        
-                        :: Build with security scanning
-                        echo Building Docker image with security scanning...
-                        "%DOCKER_PATH%\\docker.exe" build ^
-                            --no-cache ^
-                            --build-arg PYTHON_VERSION=%PYTHON_VERSION% ^
-                            --build-arg FLASK_VERSION=%FLASK_VERSION% ^
-                            --build-arg WERKZEUG_VERSION=%WERKZEUG_VERSION% ^
-                            --security-opt=no-new-privileges ^
-                            --label "org.opencontainers.image.created=%DATE% %TIME%" ^
-                            --label "org.opencontainers.image.revision=%BUILD_NUMBER%" ^
-                            --label "org.opencontainers.image.version=%DOCKER_TAG%" ^
-                            -t %DOCKER_IMAGE%:%DOCKER_TAG% .
-                        
-                        :: Verify image
-                        echo Verifying built image...
-                        "%DOCKER_PATH%\\docker.exe" inspect %DOCKER_IMAGE%:%DOCKER_TAG%
-                        if %ERRORLEVEL% neq 0 (
-                            echo ERROR: Image verification failed
-                            exit /b 1
-                        )
+                        echo === Building Docker Image ===
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" build --no-cache -t %DOCKER_IMAGE%:%DOCKER_TAG% .
                     '''
                 }
             }
         }
         
-        stage('Run Application') {
+        stage('Test') {
             steps {
                 script {
-                    echo "=== Application Run Stage ==="
+                    echo "Running tests..."
                     bat '''
                         @echo off
-                        setlocal EnableDelayedExpansion
-                        
-                        :: Add Docker to PATH
-                        set PATH=%PATH%;%DOCKER_PATH%
-                        
-                        echo Starting application...
-                        "%DOCKER_PATH%\\docker.exe" run ^
-                            --rm ^
-                            -p 8000:8000 ^
-                            --name ai-property-verifier-%BUILD_NUMBER% ^
-                            --memory=512m ^
-                            --cpus=1 ^
-                            --health-cmd="curl -f http://localhost:8000/health || exit 1" ^
-                            --health-interval=30s ^
-                            --health-timeout=10s ^
-                            --health-retries=3 ^
-                            %DOCKER_IMAGE%:%DOCKER_TAG% python app.py
+                        echo === Running Tests ===
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" run --rm %DOCKER_IMAGE%:%DOCKER_TAG% python -m pytest test_app.py -v
                     '''
                 }
             }
@@ -185,18 +75,13 @@ pipeline {
         stage('Push') {
             steps {
                 script {
-                    echo "=== Push Stage ==="
+                    echo "Pushing Docker image..."
                     bat '''
                         @echo off
-                        setlocal EnableDelayedExpansion
-                        
-                        :: Add Docker to PATH
-                        set PATH=%PATH%;%DOCKER_PATH%
-                        
-                        echo Tagging and pushing images...
-                        "%DOCKER_PATH%\\docker.exe" tag %DOCKER_IMAGE%:%DOCKER_TAG% %DOCKER_IMAGE%:latest
-                        "%DOCKER_PATH%\\docker.exe" push %DOCKER_IMAGE%:%DOCKER_TAG%
-                        "%DOCKER_PATH%\\docker.exe" push %DOCKER_IMAGE%:latest
+                        echo === Pushing Docker Image ===
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" tag %DOCKER_IMAGE%:%DOCKER_TAG% %DOCKER_IMAGE%:latest
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:%DOCKER_TAG%
+                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:latest
                     '''
                 }
             }
@@ -205,20 +90,12 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    echo "=== Deployment Stage ==="
+                    echo "Deploying to Kubernetes..."
                     bat '''
                         @echo off
-                        setlocal EnableDelayedExpansion
-                        
-                        :: Add Docker to PATH
-                        set PATH=%PATH%;%DOCKER_PATH%
-                        
-                        echo Deploying to Kubernetes...
+                        echo === Deploying to Kubernetes ===
                         kubectl apply -f k8s/deployment.yaml
                         kubectl apply -f k8s/service.yaml
-                        
-                        echo Waiting for deployment to be ready...
-                        kubectl rollout status deployment/ai-property-verifier --timeout=300s
                     '''
                 }
             }
@@ -227,59 +104,13 @@ pipeline {
     
     post {
         always {
-            node('windows') {
-                script {
-                    echo "=== Pipeline Completion ==="
-                }
-            }
+            cleanWs()
         }
         success {
-            node('windows') {
-                script {
-                    echo "=== Success Notification ==="
-                    emailext (
-                        subject: "SUCCESS: Pipeline '${env.JOB_NAME}' [${env.BUILD_NUMBER}]",
-                        body: """Pipeline completed successfully!
-                        Job: ${env.JOB_NAME}
-                        Build Number: ${env.BUILD_NUMBER}
-                        Build URL: ${env.BUILD_URL}
-                        """,
-                        recipientProviders: [[$class: 'DevelopersRecipientProvider']]
-                    )
-                }
-            }
+            echo 'Pipeline completed successfully!'
         }
         failure {
-            node('windows') {
-                script {
-                    echo "=== Failure Analysis ==="
-                    bat '''
-                        @echo off
-                        setlocal EnableDelayedExpansion
-                        
-                        :: Add Docker to PATH
-                        set PATH=%PATH%;%DOCKER_PATH%
-                        
-                        echo Collecting debug information...
-                        "%DOCKER_PATH%\\docker.exe" images
-                        "%DOCKER_PATH%\\docker.exe" ps -a
-                        "%DOCKER_PATH%\\docker.exe" logs ai-property-verifier-%BUILD_NUMBER% 2>&1
-                    '''
-                    emailext (
-                        subject: "FAILED: Pipeline '${env.JOB_NAME}' [${env.BUILD_NUMBER}]",
-                        body: """Pipeline failed!
-                        Job: ${env.JOB_NAME}
-                        Build Number: ${env.BUILD_NUMBER}
-                        Build URL: ${env.BUILD_URL}
-                        Stage: ${currentBuild.currentResult}
-                        """,
-                        recipientProviders: [[$class: 'DevelopersRecipientProvider']]
-                    )
-                }
-            }
-        }
-        unstable {
-            echo "Pipeline marked as unstable"
+            echo 'Pipeline failed!'
         }
     }
 }
