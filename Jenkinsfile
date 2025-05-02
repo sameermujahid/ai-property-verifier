@@ -7,26 +7,6 @@ pipeline {
     }
     
     stages {
-        stage('Cleanup') {
-            steps {
-                script {
-                    echo "Cleaning up before build..."
-                    bat '''
-                        @echo off
-                        echo === Cleaning up system ===
-                        
-                        :: Clean Docker
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" system prune -a --volumes --force
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" builder prune -a --force
-                        
-                        :: Clean workspace
-                        rmdir /s /q "%WORKSPACE%" 2>nul
-                        mkdir "%WORKSPACE%"
-                    '''
-                }
-            }
-        }
-        
         stage('Checkout') {
             steps {
                 checkout scm
@@ -58,9 +38,6 @@ pipeline {
                         
                         :: Set Docker context
                         "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" context use desktop-linux
-                        
-                        :: Clean up Docker
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" system prune -f
                     '''
                 }
             }
@@ -124,21 +101,6 @@ pipeline {
     }
     
     post {
-        always {
-            script {
-                bat '''
-                    @echo off
-                    echo === Final Cleanup ===
-                    
-                    :: Clean Docker
-                    "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" system prune -a --volumes --force
-                    "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" builder prune -a --force
-                    
-                    :: Clean workspace
-                    rmdir /s /q "%WORKSPACE%" 2>nul
-                '''
-            }
-        }
         success {
             echo 'Pipeline completed successfully!'
         }
