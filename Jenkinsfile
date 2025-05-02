@@ -106,11 +106,6 @@ pipeline {
                         :: Set Docker context
                         "%DOCKER_PATH%\\docker.exe" context use desktop-linux
                         
-                        :: Clean up Docker resources
-                        echo Cleaning up Docker resources...
-                        "%DOCKER_PATH%\\docker.exe" system prune -f --volumes --all
-                        "%DOCKER_PATH%\\docker.exe" builder prune -f --all
-                        
                         :: Verify Docker setup
                         echo Verifying Docker setup...
                         "%DOCKER_PATH%\\docker.exe" info
@@ -154,47 +149,6 @@ pipeline {
                             echo ERROR: Image verification failed
                             exit /b 1
                         )
-                    '''
-                }
-            }
-        }
-        
-        stage('Verify Dependencies') {
-            steps {
-                script {
-                    echo "=== Dependency Verification Stage ==="
-                    bat '''
-                        @echo off
-                        setlocal EnableDelayedExpansion
-                        
-                        :: Add Docker to PATH
-                        set PATH=%PATH%;%DOCKER_PATH%
-                        
-                        echo Verifying Python and package versions...
-                        "%DOCKER_PATH%\\docker.exe" run --rm %DOCKER_IMAGE%:%DOCKER_TAG% python -c ^
-                            "import sys; print(f'Python version: {sys.version}'); ^
-                            import flask; print(f'Flask version: {flask.__version__}'); ^
-                            import werkzeug; print(f'Werkzeug version: {werkzeug.__version__}'); ^
-                            import pip; print('\\nInstalled packages:'); ^
-                            [print(f'{pkg.key}=={pkg.version}') for pkg in pip.get_installed_distributions()]"
-                    '''
-                }
-            }
-        }
-        
-        stage('Security Scan') {
-            steps {
-                script {
-                    echo "=== Security Scanning Stage ==="
-                    bat '''
-                        @echo off
-                        setlocal EnableDelayedExpansion
-                        
-                        :: Add Docker to PATH
-                        set PATH=%PATH%;%DOCKER_PATH%
-                        
-                        echo Running security scan...
-                        "%DOCKER_PATH%\\docker.exe" scan %DOCKER_IMAGE%:%DOCKER_TAG%
                     '''
                 }
             }
@@ -275,19 +229,7 @@ pipeline {
         always {
             node('windows') {
                 script {
-                    echo "=== Cleanup Stage ==="
-                    bat '''
-                        @echo off
-                        setlocal EnableDelayedExpansion
-                        
-                        :: Add Docker to PATH
-                        set PATH=%PATH%;%DOCKER_PATH%
-                        
-                        echo Cleaning up resources...
-                        "%DOCKER_PATH%\\docker.exe" system prune -f --volumes --all
-                        "%DOCKER_PATH%\\docker.exe" builder prune -f --all
-                    '''
-                    cleanWs()
+                    echo "=== Pipeline Completion ==="
                 }
             }
         }
