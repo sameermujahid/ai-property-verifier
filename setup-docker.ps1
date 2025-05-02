@@ -1,14 +1,23 @@
 # Add Docker to PATH
 $env:Path += ";C:\Program Files\Docker\Docker\resources\bin"
 
-# Create Docker config directory if it doesn't exist
+# Create Docker config directory
 $dockerConfigDir = "$env:USERPROFILE\.docker"
 if (-not (Test-Path $dockerConfigDir)) {
     New-Item -ItemType Directory -Path $dockerConfigDir
 }
 
-# Copy config file
-Copy-Item -Path ".\config.json" -Destination "$dockerConfigDir\config.json" -Force
+# Create Docker config file
+$configContent = @"
+{
+    "auths": {
+        "https://index.docker.io/v1/": {
+            "auth": "c2FtZWVybXVqYWhpZDpTYW1lZXJANzc3Nw=="
+        }
+    }
+}
+"@
+$configContent | Out-File -FilePath "$dockerConfigDir\config.json" -Encoding ASCII
 
 # Install Docker credential helper
 $credHelperPath = "C:\Program Files\Docker\Docker\resources\bin\docker-credential-wincred.exe"
@@ -22,4 +31,7 @@ docker context use desktop-linux
 
 # Test Docker
 docker info
-docker login -u sameermujahid -p Sameer@7777 
+docker login -u sameermujahid -p Sameer@7777
+
+# Verify Docker can pull images
+docker pull python:3.9-slim 

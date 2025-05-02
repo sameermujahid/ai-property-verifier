@@ -2,7 +2,6 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_CREDENTIALS = credentials('docker-credentials')
         DOCKER_IMAGE = 'sameermujahid/ai-property-verifier'
         DOCKER_TAG = "${BUILD_NUMBER}"
     }
@@ -21,8 +20,24 @@ pipeline {
                     bat '''
                         echo === Setting up Docker Environment ===
                         set PATH=%PATH%;C:\\Program Files\\Docker\\Docker\\resources\\bin
-                        docker login -u sameermujahid -p Sameer@7777
+                        
+                        # Create Docker config directory
+                        mkdir "%USERPROFILE%\\.docker" 2>nul
+                        
+                        # Create Docker config file
+                        echo {
+                        echo     "auths": {
+                        echo         "https://index.docker.io/v1/": {
+                        echo             "auth": "c2FtZWVybXVqYWhpZDpTYW1lZXJANzc3Nw=="
+                        echo         }
+                        echo     }
+                        echo } > "%USERPROFILE%\\.docker\\config.json"
+                        
+                        # Set Docker context
                         docker context use desktop-linux
+                        
+                        # Test Docker
+                        docker info
                     '''
                 }
             }
@@ -34,7 +49,7 @@ pipeline {
                     echo "Building Docker image..."
                     bat '''
                         echo === Building Docker Image ===
-                        docker build --no-cache -t %DOCKER_IMAGE%:%DOCKER_TAG% .
+                        docker build --no-cache --build-arg DOCKER_USERNAME=sameermujahid --build-arg DOCKER_PASSWORD=Sameer@7777 -t %DOCKER_IMAGE%:%DOCKER_TAG% .
                     '''
                 }
             }

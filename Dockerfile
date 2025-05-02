@@ -1,5 +1,9 @@
 FROM python:3.9-slim
 
+# Add build arguments for credentials
+ARG DOCKER_USERNAME
+ARG DOCKER_PASSWORD
+
 WORKDIR /app
 
 # Install system dependencies
@@ -25,6 +29,8 @@ EXPOSE 5000
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
 ENV LOG_DIR=/app/logs
+ENV DOCKER_USERNAME=${DOCKER_USERNAME}
+ENV DOCKER_PASSWORD=${DOCKER_PASSWORD}
 
 # Run the application
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"] 
