@@ -84,23 +84,53 @@ pipeline {
         stage('Push') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'docker-hub', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        bat '''
-                            @echo off
-                            echo === Pushing Docker Image ===
-                            echo Start Time: %TIME%
-                            "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" login -u %DOCKER_USERNAME% -p %DOCKER_PASSWORD%
-                            "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" tag %DOCKER_IMAGE%:%DOCKER_TAG% %DOCKER_IMAGE%:latest
-                            "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:%DOCKER_TAG%
-                            "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:latest
-                            echo End Time: %TIME%
-                        '''
+                    try {
+                        withCredentials([usernamePassword(credentialsId: 'docker-hub', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                            bat '''
+                                @echo off
+                                echo === Pushing Docker Image ===
+                                echo Start Time: %TIME%
+                                
+                                :: Verify Docker is still running
+                                docker info > nul 2>&1
+                                if errorlevel 1 (
+                                    echo Docker is not running. Restarting Docker Desktop...
+                                    start "" "D:\\Program Files\\Docker\\Docker\\Docker Desktop.exe"
+                                    timeout /t 30 /nobreak
+                                )
+                                
+                                :: Login to Docker Hub
+                                echo Logging in to Docker Hub...
+                                "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" login -u %DOCKER_USERNAME% -p %DOCKER_PASSWORD%
+                                if errorlevel 1 (
+                                    echo Failed to login to Docker Hub
+                                    exit /b 1
+                                )
+                                
+                                :: Tag and push images
+                                echo Tagging images...
+                                "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" tag %DOCKER_IMAGE%:%DOCKER_TAG% %DOCKER_IMAGE%:latest
+                                
+                                echo Pushing images...
+                                "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:%DOCKER_TAG%
+                                "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:latest
+                                
+                                echo End Time: %TIME%
+                            '''
+                        }
+                    } catch (Exception e) {
+                        echo "Error during Docker Hub push: ${e.message}"
+                        echo "Please ensure Docker Hub credentials are properly configured in Jenkins"
+                        currentBuild.result = 'UNSTABLE'
                     }
                 }
             }
         }
         
         stage('Deploy') {
+            when {
+                expression { currentBuild.result == 'SUCCESS' || currentBuild.result == 'UNSTABLE' }
+            }
             steps {
                 script {
                     echo "Deploying to Kubernetes..."
@@ -122,7 +152,11 @@ pipeline {
             bat '''
                 @echo off
                 echo === Cleaning up Docker resources ===
-                "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" system prune -f
+                :: Verify Docker is still running before cleanup
+                docker info > nul 2>&1
+                if not errorlevel 1 (
+                    "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" system prune -f
+                )
             '''
         }
         success {
@@ -130,6 +164,9 @@ pipeline {
         }
         failure {
             echo 'Pipeline failed!'
+        }
+        unstable {
+            echo 'Pipeline completed with warnings!'
         }
     }
 }
