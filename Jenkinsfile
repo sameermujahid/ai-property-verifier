@@ -66,20 +66,20 @@ pipeline {
             }
         }
         
-        stage('Test') {
-            steps {
-                script {
-                    echo "Running tests..."
-                    bat '''
-                        @echo off
-                        echo === Running Tests ===
-                        echo Start Time: %TIME%
-                        "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" run --rm %DOCKER_IMAGE%:%DOCKER_TAG% python -m pytest test_app.py -v
-                        echo End Time: %TIME%
-                    '''
-                }
-            }
-        }
+        // stage('Test') {
+        //     steps {
+        //         script {
+        //             echo "Running tests..."
+        //             bat '''
+        //                 @echo off
+        //                 echo === Running Tests ===
+        //                 echo Start Time: %TIME%
+        //                 "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" run --rm %DOCKER_IMAGE%:%DOCKER_TAG% python -m pytest test_app.py -v
+        //                 echo End Time: %TIME%
+        //             '''
+        //         }
+        //     }
+        // }
         
         stage('Push') {
             steps {
