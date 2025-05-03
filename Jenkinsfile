@@ -23,14 +23,14 @@ pipeline {
                         echo Start Time: %TIME%
                         
                         :: Add Docker to PATH
-                        set PATH=%PATH%;C:\\Program Files\\Docker\\Docker\\resources\\bin
+                        set PATH=%PATH%;D:\\Program Files\\Docker\\Docker\\resources\\bin
                         
                         :: Check if Docker is running
                         echo Checking Docker status...
                         docker info > nul 2>&1
                         if errorlevel 1 (
                             echo Docker is not running. Starting Docker Desktop...
-                            start "" "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe"
+                            start "" "D:\\Program Files\\Docker\\Docker\\Docker Desktop.exe"
                             timeout /t 30 /nobreak
                         )
                         
@@ -59,7 +59,7 @@ pipeline {
                         @echo off
                         echo === Building Docker Image ===
                         echo Start Time: %TIME%
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" build --no-cache --rm -t %DOCKER_IMAGE%:%DOCKER_TAG% .
+                        "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" build --no-cache --rm -t %DOCKER_IMAGE%:%DOCKER_TAG% .
                         echo End Time: %TIME%
                     '''
                 }
@@ -74,7 +74,7 @@ pipeline {
                         @echo off
                         echo === Running Tests ===
                         echo Start Time: %TIME%
-                        "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" run --rm %DOCKER_IMAGE%:%DOCKER_TAG% python -m pytest test_app.py -v
+                        "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" run --rm %DOCKER_IMAGE%:%DOCKER_TAG% python -m pytest test_app.py -v
                         echo End Time: %TIME%
                     '''
                 }
@@ -89,10 +89,10 @@ pipeline {
                             @echo off
                             echo === Pushing Docker Image ===
                             echo Start Time: %TIME%
-                            "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" login -u %DOCKER_USERNAME% -p %DOCKER_PASSWORD%
-                            "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" tag %DOCKER_IMAGE%:%DOCKER_TAG% %DOCKER_IMAGE%:latest
-                            "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:%DOCKER_TAG%
-                            "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:latest
+                            "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" login -u %DOCKER_USERNAME% -p %DOCKER_PASSWORD%
+                            "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" tag %DOCKER_IMAGE%:%DOCKER_TAG% %DOCKER_IMAGE%:latest
+                            "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:%DOCKER_TAG%
+                            "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:latest
                             echo End Time: %TIME%
                         '''
                     }
@@ -122,7 +122,7 @@ pipeline {
             bat '''
                 @echo off
                 echo === Cleaning up Docker resources ===
-                "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" system prune -f
+                "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" system prune -f
             '''
         }
         success {

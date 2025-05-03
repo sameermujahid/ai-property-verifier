@@ -1,37 +1,52 @@
 # Add Docker to PATH
-$env:Path += ";C:\Program Files\Docker\Docker\resources\bin"
+$env:Path += ";D:\Program Files\Docker\Docker\resources\bin"
 
-# Create Docker config directory
-$dockerConfigDir = "$env:USERPROFILE\.docker"
-if (-not (Test-Path $dockerConfigDir)) {
-    New-Item -ItemType Directory -Path $dockerConfigDir
+# Check if Docker is installed
+if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+    Write-Host "Docker is not installed. Please install Docker Desktop first."
+    exit 1
 }
 
-# Create Docker config file
-$configContent = @"
-{
-    "auths": {
-        "https://index.docker.io/v1/": {
-            "auth": "c2FtZWVybXVqYWhpZDpTYW1lZXJANzc3Nw=="
+# Check if Docker is running
+try {
+    docker info > $null 2>&1
+} catch {
+    Write-Host "Docker is not running. Please start Docker Desktop."
+    exit 1
+}
+
+# Configure Docker to use D drive
+$dockerConfig = @{
+    "credsStore" = "wincred"
+    "auths" = @{
+        "https://index.docker.io/v1/" = @{
+            "auth" = "c2FtZWVybXVqYWhpZDpTYW1lZXJANzc3Nw=="
         }
     }
+    "HttpHeaders" = @{
+        "User-Agent" = "Docker-Client/28.0.4 (windows)"
+    }
+    "stackOrchestrator" = "swarm"
+    "experimental" = $false
+    "features" = @{
+        "buildkit" = $true
+    }
+    "data-root" = "D:\docker"
 }
-"@
-$configContent | Out-File -FilePath "$dockerConfigDir\config.json" -Encoding ASCII
 
-# Install Docker credential helper
-$credHelperPath = "C:\Program Files\Docker\Docker\resources\bin\docker-credential-wincred.exe"
-if (-not (Test-Path $credHelperPath)) {
-    Write-Host "Downloading Docker credential helper..."
-    Invoke-WebRequest -Uri "https://github.com/docker/docker-credential-helpers/releases/download/v0.7.0/docker-credential-wincred-v0.7.0-amd64.exe" -OutFile $credHelperPath
+# Create Docker config directory if it doesn't exist
+$dockerConfigDir = "$env:USERPROFILE\.docker"
+if (-not (Test-Path $dockerConfigDir)) {
+    New-Item -ItemType Directory -Path $dockerConfigDir | Out-Null
 }
 
-# Set Docker context
-docker context use desktop-linux
+# Save Docker configuration
+$dockerConfig | ConvertTo-Json | Set-Content "$dockerConfigDir\config.json"
 
-# Test Docker
-docker info
-docker login -u sameermujahid -p Sameer@7777
+# Configure Docker credential helper
+$credHelperPath = "D:\Program Files\Docker\Docker\resources\bin\docker-credential-wincred.exe"
+if (Test-Path $credHelperPath) {
+    $env:DOCKER_CREDENTIAL_HELPER = "wincred"
+}
 
-# Verify Docker can pull images
-docker pull python:3.9-slim 
+Write-Host "Docker setup completed successfully!" 
