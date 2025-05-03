@@ -13,5 +13,11 @@
     "features": {
         "buildkit": true
     },
-    "data-root": "D:\\docker"
+    "data-root": "D:\\docker",
+    "storage-driver": "windowsfilter",
+    "max-concurrent-downloads": 3,
+    "max-concurrent-uploads": 3,
+    "shutdown-timeout": 15,
+    "debug": true,
+    "log-level": "info"
 } 
