@@ -13,6 +13,31 @@ pipeline {
             }
         }
         
+        stage('Check Disk Space') {
+            steps {
+                script {
+                    bat '''
+                        @echo off
+                        echo === Checking Disk Space ===
+                        for /f "tokens=3" %%a in ('dir /-c D:\\') do set freeSpace=%%a
+                        echo Free space on D: drive: %freeSpace% bytes
+                        if %freeSpace% LSS 1073741824 (
+                            echo Warning: Less than 1GB free space available
+                            echo Running cleanup...
+                            docker system prune -af --volumes
+                            docker builder prune -af
+                            for /f "tokens=3" %%a in ('dir /-c D:\\') do set freeSpace=%%a
+                            echo Free space after cleanup: %freeSpace% bytes
+                            if %freeSpace% LSS 1073741824 (
+                                echo Error: Still insufficient disk space
+                                exit /b 1
+                            )
+                        )
+                    '''
+                }
+            }
+        }
+        
         stage('Setup Docker') {
             steps {
                 script {
@@ -34,9 +59,10 @@ pipeline {
                             timeout /t 30 /nobreak
                         )
                         
-                        :: Clean up Docker resources
+                        :: Clean up Docker resources aggressively
                         echo Cleaning up Docker resources...
-                        docker system prune -f
+                        docker system prune -af --volumes
+                        docker builder prune -af
                         
                         :: Set Docker context to default
                         echo Setting Docker context...
@@ -59,7 +85,20 @@ pipeline {
                         @echo off
                         echo === Building Docker Image ===
                         echo Start Time: %TIME%
+                        
+                        :: Check disk space again before build
+                        for /f "tokens=3" %%a in ('dir /-c D:\\') do set freeSpace=%%a
+                        if %freeSpace% LSS 1073741824 (
+                            echo Error: Insufficient disk space for build
+                            exit /b 1
+                        )
+                        
                         "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" build --no-cache --rm -t %DOCKER_IMAGE%:%DOCKER_TAG% .
+                        if errorlevel 1 (
+                            echo Build failed, cleaning up...
+                            docker system prune -af --volumes
+                            exit /b 1
+                        )
                         echo End Time: %TIME%
                     '''
                 }
@@ -155,7 +194,9 @@ pipeline {
                 :: Verify Docker is still running before cleanup
                 docker info > nul 2>&1
                 if not errorlevel 1 (
-                    "D:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" system prune -f
+                    echo Running aggressive cleanup...
+                    docker system prune -af --volumes
+                    docker builder prune -af
                 )
             '''
         }
